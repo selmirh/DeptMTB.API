@@ -14,7 +14,7 @@ namespace DeptMTB.API.Controllers
         public SearchYouTubeController(ILogger<SearchMovieDataController> logger, IConfiguration configuration)
         {
             _logger = logger;
-            Configuration = configuration;  
+            Configuration = configuration;
         }
 
         static List<string> trailers = new List<string>();
@@ -24,7 +24,7 @@ namespace DeptMTB.API.Controllers
         public List<string> GetMovieTrailers(string searchTerm)
         {
             // An attempt to make search smarter and return only desired videos.
-            if(!searchTerm.Contains("trailer"))
+            if (!searchTerm.Contains("trailer"))
             {
                 searchTerm += " trailer";
             }
@@ -52,29 +52,39 @@ namespace DeptMTB.API.Controllers
 
         private async Task Run(string searchTerm)
         {
-            var youtubeService = new YouTubeService(new BaseClientService.Initializer()
+            try
             {
-                ApiKey = Configuration["YouTubeApiKey"],
-                ApplicationName = this.GetType().ToString()
-            });
-
-            //This parsing should ideally be checked with try-catch block, but hereby I assume that parsing will be okay. :)
-            var maxResults = Int32.Parse(Configuration["YouTubeSearchMaxResults"]);
-            var searchListRequest = youtubeService.Search.List("snippet");
-            searchListRequest.Q = searchTerm;
-            searchListRequest.MaxResults = maxResults;
-
-            // Call the search.list method to retrieve results matching the specified query term.
-            var searchListResponse = await searchListRequest.ExecuteAsync();
-
-            foreach (var searchResult in searchListResponse.Items)
-            {
-                switch (searchResult.Id.Kind)
+                var youtubeService = new YouTubeService(new BaseClientService.Initializer()
                 {
-                    case "youtube#video":
-                        trailers.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.VideoId));
-                        break;
+                    ApiKey = Configuration["YouTubeApiKey"],
+                    ApplicationName = this.GetType().ToString()
+                });
+                var maxResults = Int32.Parse(Configuration["YouTubeSearchMaxResults"]);
+                var searchListRequest = youtubeService.Search.List("snippet");
+                searchListRequest.Q = searchTerm;
+                searchListRequest.MaxResults = maxResults;
+
+                // Call the search.list method to retrieve results matching the specified query term.
+
+                var searchListResponse = await searchListRequest.ExecuteAsync();
+
+                foreach (var searchResult in searchListResponse.Items)
+                {
+                    switch (searchResult.Id.Kind)
+                    {
+                        case "youtube#video":
+                            trailers.Add("https://www.youtube.com/embed/" + searchResult.Id.VideoId);
+                            break;
+                    }
                 }
+
+                // dummy data for testing
+                //trailers.Add("https://www.youtube.com/embed/YoHD9XEInc0");
+                //trailers.Add("https://www.youtube.com/embed/8hP9D6kZseM");
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation("Error: " + e.Message);
             }
         }
     }
